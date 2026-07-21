@@ -9,7 +9,8 @@ st.set_page_config(
 st.title("Simulation de mécanique")
 
 components.iframe(
-    "http://localhost:5173",
+    "https://mec.vercel.app",
     height=900,
     scrolling=True
+
 )
