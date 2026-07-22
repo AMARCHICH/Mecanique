@@ -7,13 +7,27 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const config = simulations[activeSim];
 
+  const selectSim = (id: string) => {
+    setActiveSim(id);
+    // Sur mobile, on referme le menu après sélection pour libérer l'écran
+    if (window.innerWidth < 768) setSidebarOpen(false);
+  };
+
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden relative">
+      {/* Fond semi-transparent sur mobile quand le menu est ouvert */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/40 z-30 md:hidden"
+        />
+      )}
+
       {/* Sidebar */}
       <aside
-        className={`${
-          sidebarOpen ? 'w-72' : 'w-0'
-        } transition-all duration-300 bg-gradient-to-b from-slate-800 to-slate-900 text-white flex flex-col overflow-hidden flex-shrink-0`}
+        className={`fixed md:static inset-y-0 left-0 z-40 w-72 transform transition-transform duration-300 md:transform-none ${
+          sidebarOpen ? 'translate-x-0 md:w-72' : '-translate-x-full md:w-0'
+        } bg-gradient-to-b from-slate-800 to-slate-900 text-white flex flex-col overflow-hidden flex-shrink-0`}
       >
         {/* Header */}
         <div className="p-4 border-b border-slate-700/50">
@@ -38,7 +52,7 @@ export default function App() {
                 .map((sim) => (
                   <button
                     key={sim.id}
-                    onClick={() => setActiveSim(sim.id)}
+                    onClick={() => selectSim(sim.id)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
                       activeSim === sim.id
                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
@@ -61,15 +75,16 @@ export default function App() {
       {/* Toggle Sidebar Button */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="absolute top-2 left-2 z-50 w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center hover:bg-slate-700 shadow-lg transition-all"
-        style={{ left: sidebarOpen ? '272px' : '4px' }}
+        className={`fixed md:absolute top-2 left-1 z-50 w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center hover:bg-slate-700 shadow-lg transition-all ${
+          sidebarOpen ? 'md:left-[272px]' : 'md:left-1'
+        }`}
         title={sidebarOpen ? 'Masquer le menu' : 'Afficher le menu'}
       >
         {sidebarOpen ? '◀' : '▶'}
       </button>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-y-auto md:overflow-hidden">
         <SimulationView key={config.id} config={config} />
       </main>
     </div>
