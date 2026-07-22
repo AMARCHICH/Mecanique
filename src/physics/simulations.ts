@@ -1217,8 +1217,14 @@ const fluidFall: SimulationConfig = {
   renderAnimation: (ctx, y, p, t, w, h, _hist) => {
     drawBackground(ctx, w, h);
     const n = p.numberOfObjects ?? 1;
+
+    // Zone réservée au texte (titre + nom d'objet), comme pour la Chute libre
+    const titleY = 14;
+    const infoY = 34;
+    const startY = 78;
+
     const groundY = h * 0.85;
-    const topY = h * 0.08;
+    const topY = startY;
     const scale = (groundY - topY) / Math.max(p.h0, 1);
     const spacing = (w - 40) / Math.max(n, 1);
     drawGround(ctx, groundY, w);
@@ -1236,7 +1242,7 @@ const fluidFall: SimulationConfig = {
     }
     // title
     ctx.fillStyle = '#0EA5E9'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(`Chute dans un fluide (ρ = ${p.rho.toFixed(2)} kg/m³)`, w / 2, topY - 12);
+    ctx.fillText(`Chute dans un fluide (ρ = ${p.rho.toFixed(2)} kg/m³)`, w / 2, titleY);
     // objects
     for (let i = 0; i < n; i++) {
       const yi = y[i * 2];
@@ -1251,7 +1257,7 @@ const fluidFall: SimulationConfig = {
       const ms = Math.max(10, Math.min(20, 8 + Math.log(p[`m_${i}`] + 1) * 5));
       ctx.beginPath(); ctx.arc(objX, objY, ms, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
       ctx.fillStyle = col; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(OBJ_NAMES_FL[i], objX, topY - 2);
+      ctx.fillText(OBJ_NAMES_FL[i], objX, infoY);
       // velocity vector
       const vScale = scale * 0.15;
       const vLen = vyi * vScale;
@@ -1314,32 +1320,24 @@ const projectile: SimulationConfig = {
   id: 'projectile',
   name: 'Mouvement de projectile',
   icon: '🎯',
-  description: 'Trajectoire de plusieurs projectiles — avec ou sans résistance de l\'air',
+  description: 'Trajectoire de plusieurs projectiles',
   category: 'Chute et projectile',
   defaultObjectCount: 1,
   maxObjectCount: 3,
   parameters: [
     { key: 'g', label: 'Gravité g', unit: 'm/s²', min: 0.1, max: 25, step: 0.1, default: 9.81 },
-    { key: 'air_res', label: 'Résistance de l\'air', unit: '', min: 0, max: 1, step: 1, default: 0, type: 'checkbox' },
-    { key: 'rho', label: 'Masse vol. air ρ', unit: 'kg/m³', min: 0.1, max: 5, step: 0.01, default: 1.22 },
     // Projectile 1
     { key: 'm_0', label: '● Masse (Proj. 1)', unit: 'kg', min: 0.01, max: 100, step: 0.1, default: 1.0 },
     { key: 'v0_0', label: '● Vitesse init. (Proj. 1)', unit: 'm/s', min: 1, max: 100, step: 1, default: 30 },
     { key: 'alpha_0', label: '● Angle (Proj. 1)', unit: '°', min: 1, max: 89, step: 1, default: 45 },
-    { key: 'Cd_0', label: '● Cd (Proj. 1)', unit: '', min: 0, max: 2, step: 0.01, default: 0.47 },
-    { key: 'A_0', label: '● Surface (Proj. 1)', unit: 'm²', min: 0.001, max: 1, step: 0.001, default: 0.01 },
     // Projectile 2
     { key: 'm_1', label: '● Masse (Proj. 2)', unit: 'kg', min: 0.01, max: 100, step: 0.1, default: 1.0 },
     { key: 'v0_1', label: '● Vitesse init. (Proj. 2)', unit: 'm/s', min: 1, max: 100, step: 1, default: 30 },
     { key: 'alpha_1', label: '● Angle (Proj. 2)', unit: '°', min: 1, max: 89, step: 1, default: 60 },
-    { key: 'Cd_1', label: '● Cd (Proj. 2)', unit: '', min: 0, max: 2, step: 0.01, default: 0.47 },
-    { key: 'A_1', label: '● Surface (Proj. 2)', unit: 'm²', min: 0.001, max: 1, step: 0.001, default: 0.01 },
     // Projectile 3
     { key: 'm_2', label: '● Masse (Proj. 3)', unit: 'kg', min: 0.01, max: 100, step: 0.1, default: 0.5 },
     { key: 'v0_2', label: '● Vitesse init. (Proj. 3)', unit: 'm/s', min: 1, max: 100, step: 1, default: 30 },
     { key: 'alpha_2', label: '● Angle (Proj. 3)', unit: '°', min: 1, max: 89, step: 1, default: 30 },
-    { key: 'Cd_2', label: '● Cd (Proj. 3)', unit: '', min: 0, max: 2, step: 0.01, default: 0.47 },
-    { key: 'A_2', label: '● Surface (Proj. 3)', unit: 'm²', min: 0.001, max: 1, step: 0.001, default: 0.05 },
   ],
   stateLabels: ['x₀', 'y₀', 'vx₀', 'vy₀', 'x₁', 'y₁', 'vx₁', 'vy₁', 'x₂', 'y₂', 'vx₂', 'vy₂'],
   getInitialState: (p) => {
@@ -1365,19 +1363,7 @@ const projectile: SimulationConfig = {
         dydt.push(0, 0, 0, 0);
         continue;
       }
-      let ax = 0, ay = -p.g;
-      if (p.air_res > 0.5) {
-        const m = Math.max(p[`m_${i}`], 0.001);
-        const A = p[`A_${i}`];
-        const Cd = p[`Cd_${i}`];
-        const v = Math.sqrt(vxi * vxi + vyi * vyi);
-        if (v > 0.001) {
-          const drag = 0.5 * p.rho * Cd * A * v / m;
-          ax -= drag * vxi;
-          ay -= drag * vyi;
-        }
-      }
-      dydt.push(vxi, vyi, ax, ay);
+      dydt.push(vxi, vyi, 0, -p.g);
     }
     return dydt;
   },
@@ -1520,11 +1506,10 @@ const projectile: SimulationConfig = {
     ctx.textAlign = 'left';
   },
   equations: [
-    { label: 'Sans résistance', text: 'x = v₀·cos(α)·t,  y = v₀·sin(α)·t - ½·g·t²' },
+    { label: 'Position', text: 'x = v₀·cos(α)·t,  y = v₀·sin(α)·t - ½·g·t²' },
     { label: 'Portée', text: 'R = v₀²·sin(2α) / g' },
     { label: 'Flèche', text: 'H = v₀²·sin²(α) / (2g)' },
     { label: 'Durée de vol', text: 'T = 2·v₀·sin(α) / g' },
-    { label: 'Avec résistance', text: 'm·dv/dt = m·g - ½·ρ·Cd·A·v·|v|' },
   ],
   computeResults: (p, y) => {
     const results: { label: string; value: string; unit: string }[] = [];
