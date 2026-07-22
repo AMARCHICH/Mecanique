@@ -806,9 +806,17 @@ const torsionPendulum: SimulationConfig = {
   },
 };
 
+
+
 // ============================================================
 // 7. CHUTE LIBRE (sans frottement)
 // ============================================================
+
+
+// ============================================================
+// 7. CHUTE LIBRE (sans frottement) — VERSION DYNAMIQUE
+// ============================================================
+
 const OBJ_COLORS_FF = ['#EF4444', '#3B82F6', '#10B981'];
 const OBJ_NAMES_FF = ['Objet 1', 'Objet 2', 'Objet 3'];
 
@@ -816,136 +824,296 @@ const freeFall: SimulationConfig = {
   id: 'freefall',
   name: 'Chute libre',
   icon: '⬇️',
-  description: 'Chute libre sans frottement — expérience de Galilée : tous les objets tombent à la même vitesse',
+  description:
+    'Chute libre sans frottement — expérience de Galilée : tous les objets tombent à la même vitesse',
   category: 'Chute et projectile',
+
+  // Nombre d'objets affichés au départ
+  defaultObjectCount: 1,
+  maxObjectCount: 3,
+
   parameters: [
     { key: 'g', label: 'Gravité g', unit: 'm/s²', min: 0.1, max: 25, step: 0.1, default: 9.81 },
-    { key: 'h0', label: 'Hauteur initiale h₀', unit: 'm', min: 1, max: 500, step: 1, default: 100 },
-    // Object 1
+    { key: 'h0', label: 'Hauteur initiale h₀', unit: 'm', min: 1, max: 500, step: 1, default: 8 },
+
+    // Masses (affichées dynamiquement selon le nombre d'objets)
     { key: 'm_0', label: '● Masse (Objet 1)', unit: 'kg', min: 0.01, max: 100, step: 0.1, default: 1.0 },
-    // Object 2
     { key: 'm_1', label: '● Masse (Objet 2)', unit: 'kg', min: 0.01, max: 100, step: 0.1, default: 5.0 },
-    // Object 3
     { key: 'm_2', label: '● Masse (Objet 3)', unit: 'kg', min: 0.01, max: 100, step: 0.1, default: 50.0 },
   ],
+
   stateLabels: ['y₀', 'vy₀', 'y₁', 'vy₁', 'y₂', 'vy₂'],
+
   getInitialState: () => [0, 0, 0, 0, 0, 0],
+
+  // ------------------------------------------------------------
+  // ÉQUATIONS
+  // ------------------------------------------------------------
   derivatives: (_t, y, p) => {
     const dydt: number[] = [];
+    const n = p.numberOfObjects ?? 1;
+
     for (let i = 0; i < 3; i++) {
+      if (i >= n) {
+        dydt.push(0, 0);
+        continue;
+      }
+
       const yi = y[i * 2];
       const vyi = y[i * 2 + 1];
-      if (yi >= p.h0) { dydt.push(0, 0); continue; }
+
+      if (yi >= p.h0) {
+        dydt.push(0, 0);
+        continue;
+      }
+
       dydt.push(vyi);
       dydt.push(p.g);
     }
+
     return dydt;
   },
+
   postStep: (y, p) => {
-    for (let i = 0; i < 3; i++) {
-      if (y[i * 2] > p.h0) { y[i * 2] = p.h0; y[i * 2 + 1] = 0; }
+    const n = p.numberOfObjects ?? 1;
+
+    for (let i = 0; i < n; i++) {
+      if (y[i * 2] > p.h0) {
+        y[i * 2] = p.h0;
+        y[i * 2 + 1] = 0;
+      }
     }
   },
+
   isEquilibrium: (y, p, t) => {
     if (t < 0.5) return false;
-    for (let i = 0; i < 3; i++) { if (y[i * 2] < p.h0 - 0.01) return false; }
+
+    const n = p.numberOfObjects ?? 1;
+
+    for (let i = 0; i < n; i++) {
+      if (y[i * 2] < p.h0 - 0.01) return false;
+    }
+
     return true;
   },
+
+  // ------------------------------------------------------------
+  // GRANDEURS DÉRIVÉES
+  // ------------------------------------------------------------
   computeDerivedQuantities: (_t, y, p) => {
     const d: Record<string, number> = {};
-    for (let i = 0; i < 3; i++) {
+    const n = p.numberOfObjects ?? 1;
+
+    for (let i = 0; i < n; i++) {
       const yi = y[i * 2];
       const vyi = y[i * 2 + 1];
-      const m = p[`m_${i}`];
+      const m = p[\`m_\${i}\`];
       const h = Math.max(0, p.h0 - yi);
       const landed = yi >= p.h0 - 0.001;
-      d[`y_${i}`] = h;
-      d[`vy_${i}`] = landed ? 0 : vyi;
-      d[`a_${i}`] = landed ? 0 : p.g;
-      d[`Ek_${i}`] = landed ? 0 : 0.5 * m * vyi * vyi;
-      d[`Ep_${i}`] = m * p.g * h;
-      d[`Em_${i}`] = (landed ? 0 : 0.5 * m * vyi * vyi) + m * p.g * h;
+
+      d[\`y_\${i}\`] = h;
+      d[\`vy_\${i}\`] = landed ? 0 : vyi;
+      d[\`a_\${i}\`] = landed ? 0 : p.g;
+      d[\`Ek_\${i}\`] = landed ? 0 : 0.5 * m * vyi * vyi;
+      d[\`Ep_\${i}\`] = m * p.g * h;
+      d[\`Em_\${i}\`] = d[\`Ek_\${i}\`] + d[\`Ep_\${i}\`];
     }
+
     return d;
   },
+
+  // ------------------------------------------------------------
+  // GRAPHES (les traces inutiles seront ignorées)
+  // ------------------------------------------------------------
   graphGroups: [
-    { type: 'time', title: 'Hauteur y(t)', traces: [0, 1, 2].map(i => ({ key: `y_${i}`, label: `${OBJ_NAMES_FF[i]}`, color: OBJ_COLORS_FF[i] })), yLabel: 'y (m)' },
-    { type: 'time', title: 'Vitesse v(t)', traces: [0, 1, 2].map(i => ({ key: `vy_${i}`, label: `${OBJ_NAMES_FF[i]}`, color: OBJ_COLORS_FF[i] })), yLabel: 'v (m/s)' },
-    { type: 'time', title: 'Accélération a(t)', traces: [0, 1, 2].map(i => ({ key: `a_${i}`, label: `${OBJ_NAMES_FF[i]}`, color: OBJ_COLORS_FF[i] })), yLabel: 'a (m/s²)' },
-    { type: 'time', title: 'Énergie', traces: [0, 1, 2].flatMap(i => [
-      { key: `Ek_${i}`, label: `Ek ${i + 1}`, color: OBJ_COLORS_FF[i] },
-      { key: `Ep_${i}`, label: `Ep ${i + 1}`, color: OBJ_COLORS_FF[i] + '80' },
-    ]), yLabel: 'Énergie (J)' },
+    {
+      type: 'time',
+      title: 'Hauteur y(t)',
+      traces: [0, 1, 2].map(i => ({
+        key: \`y_\${i}\`,
+        label: OBJ_NAMES_FF[i],
+        color: OBJ_COLORS_FF[i],
+      })),
+      yLabel: 'y (m)',
+    },
+    {
+      type: 'time',
+      title: 'Vitesse v(t)',
+      traces: [0, 1, 2].map(i => ({
+        key: \`vy_\${i}\`,
+        label: OBJ_NAMES_FF[i],
+        color: OBJ_COLORS_FF[i],
+      })),
+      yLabel: 'v (m/s)',
+    },
+    {
+      type: 'time',
+      title: 'Accélération a(t)',
+      traces: [0, 1, 2].map(i => ({
+        key: \`a_\${i}\`,
+        label: OBJ_NAMES_FF[i],
+        color: OBJ_COLORS_FF[i],
+      })),
+      yLabel: 'a (m/s²)',
+    },
+    {
+      type: 'time',
+      title: 'Énergie',
+      traces: [0, 1, 2].flatMap(i => [
+        { key: \`Ek_\${i}\`, label: \`Ek \${i + 1}\`, color: OBJ_COLORS_FF[i] },
+        { key: \`Ep_\${i}\`, label: \`Ep \${i + 1}\`, color: OBJ_COLORS_FF[i] + '80' },
+      ]),
+      yLabel: 'Énergie (J)',
+    },
   ],
-  renderAnimation: (ctx, y, p, t, w, h, _hist) => {
+
+  // ------------------------------------------------------------
+  // ANIMATION
+  // ------------------------------------------------------------
+  renderAnimation: (ctx, y, p, t, w, h) => {
     drawBackground(ctx, w, h);
-    const groundY = h * 0.60;
-    const topY = h * 0.08;
+
+    const n = p.numberOfObjects ?? 1;
+
+    // Zone réservée au texte
+    const infoY = 18;
+    const startY = 72;
+
+    const groundY = h * 0.82;
+    const topY = startY;
+
     const scale = (groundY - topY) / Math.max(p.h0, 1);
-    const spacing = (w - 40) / 3;
+    const spacing = (w - 80) / Math.max(n, 1);
+
     drawGround(ctx, groundY, w);
-    // height markers
-    ctx.fillStyle = '#9CA3AF'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+
+    // Grille horizontale
+    ctx.fillStyle = '#9CA3AF';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'right';
+
     for (let hh = 0; hh <= p.h0; hh += Math.max(1, Math.floor(p.h0 / 5))) {
       const yy = groundY - hh * scale;
       if (yy < topY) break;
-      ctx.strokeStyle = '#D1D5DB'; ctx.lineWidth = 0.5;
-      ctx.beginPath(); ctx.moveTo(30, yy); ctx.lineTo(w - 10, yy); ctx.stroke();
-      ctx.fillText(`${hh}`, 28, yy + 3);
+
+      ctx.strokeStyle = '#D1D5DB';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(30, yy);
+      ctx.lineTo(w - 10, yy);
+      ctx.stroke();
+
+      ctx.fillText(\`\${hh}\`, 28, yy + 3);
     }
-    // Galileo banner
-    ctx.fillStyle = '#6366F1'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('  ', w / 2, topY - 30);
-    // objects — all at same height since no friction
-    for (let i = 0; i < 3; i++) {
+
+    // Objets
+    for (let i = 0; i < n; i++) {
       const yi = y[i * 2];
       const vyi = y[i * 2 + 1];
       const hi = Math.max(0, p.h0 - yi);
-      const objX = 50 + spacing * i + spacing / 2;
+
+      const objX = 40 + spacing * i + spacing / 2;
       const objY = groundY - hi * scale;
+
       const col = OBJ_COLORS_FF[i];
-      ctx.strokeStyle = col + '40'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(objX, topY); ctx.lineTo(objX, objY); ctx.stroke();
-      ctx.fillStyle = col; ctx.strokeStyle = col.replace(')', ',0.7)'); ctx.lineWidth = 2;
-      const ms = Math.max(10, Math.min(20, 8 + Math.log(p[`m_${i}`] + 1) * 5));
-      ctx.beginPath(); ctx.arc(objX, objY, ms, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = col; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(`${OBJ_NAMES_FF[i]} (${p[`m_${i}`]} kg)`, objX, topY - 10);
+
+      // Ligne de chute
+      ctx.strokeStyle = col + '40';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(objX, topY);
+      ctx.lineTo(objX, objY);
+      ctx.stroke();
+
+      // Boule
+      const radius = Math.max(12, Math.min(22, 10 + Math.log(p[\`m_\${i}\`] + 1) * 4));
+
+      ctx.fillStyle = col;
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(objX, objY, radius, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
+
+      // TEXTE AU-DESSUS (zone réservée)
+      ctx.fillStyle = col;
+      ctx.textAlign = 'center';
+
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(OBJ_NAMES_FF[i], objX, infoY);
+
+      ctx.font = '11px sans-serif';
+      ctx.fillText(\`\${p[\`m_\${i}\`].toFixed(1)} kg\`, objX, infoY + 16);
+
+      // Hauteur à côté
+      ctx.fillStyle = '#374151';
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(\`h=\${hi.toFixed(1)} m\`, objX + radius + 10, objY);
+
+      // Flèche vitesse
       const vScale = scale * 0.15;
       const vLen = vyi * vScale;
+
       if (Math.abs(vLen) > 3) {
-        drawArrow(ctx, objX + ms + 5, objY, objX + ms + 5, objY + Math.min(vLen, groundY - objY - 5), col, 2);
+        drawArrow(
+          ctx,
+          objX + radius + 5,
+          objY,
+          objX + radius + 5,
+          objY + Math.min(vLen, groundY - objY - 5),
+          col,
+          2
+        );
       }
-      ctx.fillStyle = '#374151'; ctx.font = '10px monospace'; ctx.textAlign = 'left';
-      ctx.fillText(`h=${hi.toFixed(1)}m`, objX + ms + 10, objY);
     }
-    ctx.fillStyle = '#374151'; ctx.font = '13px monospace'; ctx.textAlign = 'right';
-    ctx.fillText(`t = ${t.toFixed(2)} s`, w - 10, 10);
+
+    // Temps
+    ctx.fillStyle = '#374151';
+    ctx.font = '13px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(\`t = \${t.toFixed(2)} s\`, w - 10, 14);
+
     ctx.textAlign = 'left';
   },
+
+  // ------------------------------------------------------------
+  // ÉQUATIONS
+  // ------------------------------------------------------------
   equations: [
-    { label: 'Équation', text: 'd²y/dt² = g  (identique pour tous les objets)' },
-    { label: 'Galilée', text: 'Dans le vide, la masse n\'influence pas la chute' },
-    { label: 'Hauteur', text: 'h(t) = h₀ - ½·g·t²' },
+    { label: 'Équation', text: 'd²y/dt² = g (identique pour tous les objets)' },
+    { label: 'Galilée', text: 'Dans le vide, la masse n’influence pas la chute' },
+    { label: 'Hauteur', text: 'h(t) = h₀ − ½·g·t²' },
     { label: 'Vitesse', text: 'v(t) = g·t' },
     { label: 'Énergie cinétique', text: 'Ek = ½·m·v²' },
   ],
+
+  // ------------------------------------------------------------
+  // RÉSULTATS
+  // ------------------------------------------------------------
   computeResults: (p, y) => {
     const results: { label: string; value: string; unit: string }[] = [];
-    const tFall = Math.sqrt(2 * p.h0 / p.g);
+    const n = p.numberOfObjects ?? 1;
+
+    const tFall = Math.sqrt((2 * p.h0) / p.g);
     const vImpact = p.g * tFall;
+
     results.push(
       { label: 'Durée de chute', value: tFall.toFixed(3), unit: 's' },
-      { label: 'Vitesse impact', value: vImpact.toFixed(2), unit: 'm/s' },
+      { label: 'Vitesse d’impact', value: vImpact.toFixed(2), unit: 'm/s' },
     );
-    for (let i = 0; i < 3; i++) {
+
+    for (let i = 0; i < n; i++) {
       const vyi = y[i * 2 + 1];
-      const m = p[`m_${i}`];
+      const m = p[\`m_\${i}\`];
+
       results.push(
-        { label: `Vitesse ${i + 1}`, value: vyi.toFixed(2), unit: 'm/s' },
-        { label: `Ek ${i + 1}`, value: (0.5 * m * vyi * vyi).toFixed(2), unit: 'J' },
+        { label: \`Vitesse \${i + 1}\`, value: vyi.toFixed(2), unit: 'm/s' },
+        { label: \`Ek \${i + 1}\`, value: (0.5 * m * vyi * vyi).toFixed(2), unit: 'J' },
       );
     }
+
     return results;
   },
 };
