@@ -895,7 +895,7 @@ const freeFall: SimulationConfig = {
     }
     // Galileo banner
     ctx.fillStyle = '#6366F1'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('Expérience de Galilée — sans frottement', w / 2, topY - 12);
+    ctx.fillText('Expérience de Galilée — sans frottement', w / 2, topY - 30);
     // objects — all at same height since no friction
     for (let i = 0; i < 3; i++) {
       const yi = y[i * 2];
