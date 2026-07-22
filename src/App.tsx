@@ -57,7 +57,7 @@ export default function App() {
 
         {/* Footer */}
         <div className="p-3 border-t border-slate-700/50 text-[10px] text-slate-500 text-center">
-          Programme de physique — Lycée marocain
+          Elaboree par : AMARCHICH Youssef
         </div>
       </aside>
 
