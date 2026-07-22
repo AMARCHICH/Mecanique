@@ -6,7 +6,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("Simulation de mécanique")
+st.title("Simulation de mécanique -Realisee par : AMARCHICH Youssef ")
 
 components.iframe(
     "https://mec.vercel.app",
