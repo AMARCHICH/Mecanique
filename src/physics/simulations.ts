@@ -1242,7 +1242,7 @@ const fluidFall: SimulationConfig = {
     }
     // title
     ctx.fillStyle = '#0EA5E9'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(` `, w / 2, titleY);
+    ctx.fillText(`Chute dans un fluide (ρ = ${p.rho.toFixed(2)} kg/m³)`, w / 2, titleY);
     // objects
     for (let i = 0; i < n; i++) {
       const yi = y[i * 2];
@@ -1273,12 +1273,6 @@ const fluidFall: SimulationConfig = {
       if (dragLen > 3) {
         drawArrow(ctx, objX - ms - 5, objY, objX - ms - 5, objY - Math.min(dragLen, 50), '#F97316', 2);
       }
-      // info
-      ctx.fillStyle = '#374151'; ctx.font = '10px monospace'; ctx.textAlign = 'left';
-      ctx.fillText(`h=${hi.toFixed(1)}m`, objX + ms + 10, objY);
-      const vLim = Math.sqrt(2 * m * p.g / (p.rho * Cd * Math.max(A, 0.001)));
-      ctx.fillStyle = '#F97316'; ctx.font = '9px monospace';
-      ctx.fillText(`v_lim=${vLim.toFixed(1)}`, objX + ms + 10, objY + 12);
     }
     ctx.fillStyle = '#374151'; ctx.font = '13px monospace'; ctx.textAlign = 'right';
     ctx.fillText(`t = ${t.toFixed(2)} s`, w - 10, 10);
