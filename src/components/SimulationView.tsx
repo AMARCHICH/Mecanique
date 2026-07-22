@@ -7,7 +7,6 @@ import { SimulationConfig, SimulationEngine, DataPoint, exportCSV } from '../phy
 
 // ==================== Nice Axis Tick Calculator ====================
 
-/** Compute human-friendly tick positions for a given range */
 function niceScale(dMin: number, dMax: number, maxTicks: number = 7) {
   if (dMax - dMin < 1e-12) { dMin -= 1; dMax += 1; }
   const range = dMax - dMin;
@@ -43,33 +42,25 @@ function formatTickLabel(v: number): string {
 function exportChartAsPNG(containerElement: HTMLElement, filename: string) {
   const svg = containerElement.querySelector('svg');
   if (!svg) return;
-
   const bbox = svg.getBoundingClientRect();
   const width = bbox.width || 600;
   const height = bbox.height || 400;
-
-  // Clone SVG and set explicit dimensions
   const cloned = svg.cloneNode(true) as SVGSVGElement;
   cloned.setAttribute('width', `${width}`);
   cloned.setAttribute('height', `${height}`);
   cloned.setAttribute('viewBox', `0 0 ${width} ${height}`);
-  // Inline font styles so they render in the image
   cloned.setAttribute('style', 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;');
-
-  // Add white background as first child
   const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
   bg.setAttribute('width', '100%');
   bg.setAttribute('height', '100%');
   bg.setAttribute('fill', 'white');
   cloned.insertBefore(bg, cloned.firstChild);
-
   const serializer = new XMLSerializer();
   const svgString = serializer.serializeToString(cloned);
   const svgDataUri = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
-
   const img = new Image();
   img.onload = () => {
-    const scale = 2; // 2x for retina quality
+    const scale = 2;
     const canvas = document.createElement('canvas');
     canvas.width = width * scale;
     canvas.height = height * scale;
@@ -79,7 +70,6 @@ function exportChartAsPNG(containerElement: HTMLElement, filename: string) {
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, width, height);
     ctx.drawImage(img, 0, 0, width, height);
-
     canvas.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
@@ -195,8 +185,7 @@ function ParameterPanel({
       )}
 
       {config.parameters.map((param) => {
-        // Masque les paramètres des objets pas encore ajoutés (ex: masse Objet 2/3
-        // tant que numberOfObjects ne les inclut pas)
+        // Masque les paramètres des objets inactifs
         if (maxObjects > 1) {
           const objMatch = param.key.match(/_(\d+)$/);
           if (objMatch && parseInt(objMatch[1], 10) >= numberOfObjects) {
@@ -325,27 +314,35 @@ function TimeGraph({
   version,
   windowSec,
   autoWindow,
+  numberOfObjects,
 }: {
   history: DataPoint[];
   group: Extract<SimulationConfig['graphGroups'][0], { type: 'time' }>;
   version: number;
   windowSec: number;
   autoWindow: boolean;
+  numberOfObjects: number;
 }) {
-  // Determine the visible time window
   const tMax = history.length > 0 ? history[history.length - 1].t : 1;
   const tMin = autoWindow ? Math.max(0, tMax - windowSec) : 0;
 
-  // Build chart data — always recompute so it's in sync with simulation
+  // ✅ FILTRE DES TRACES : n'affiche que les objets actifs
+  const visibleTraces = group.traces.filter(trace => {
+    const match = trace.key.match(/_(\d+)$/);
+    if (!match) return true; // Trace non liée à un objet → toujours visible
+    const objIndex = parseInt(match[1], 10);
+    return objIndex < numberOfObjects;
+  });
+
   const step = Math.max(1, Math.floor(history.length / 1000));
   const chartData: Record<string, number>[] = [];
   let yMin = Infinity, yMax = -Infinity;
 
   for (let i = 0; i < history.length; i += step) {
     const pt = history[i];
-    if (pt.t < tMin - 0.001) continue;           // skip points outside window
+    if (pt.t < tMin - 0.001) continue;
     const row: Record<string, number> = { t: pt.t };
-    for (const trace of group.traces) {
+    for (const trace of visibleTraces) {
       const val = pt.derived[trace.key] ?? 0;
       row[trace.key] = val;
       if (val < yMin) yMin = val;
@@ -353,12 +350,11 @@ function TimeGraph({
     }
     chartData.push(row);
   }
-  // Also include last point for precision
   if (history.length > 0) {
     const last = history[history.length - 1];
     if (chartData.length === 0 || chartData[chartData.length - 1].t !== last.t) {
       const row: Record<string, number> = { t: last.t };
-      for (const trace of group.traces) {
+      for (const trace of visibleTraces) {
         const val = last.derived[trace.key] ?? 0;
         row[trace.key] = val;
         if (val < yMin) yMin = val;
@@ -370,36 +366,30 @@ function TimeGraph({
 
   if (yMin === Infinity) { yMin = -1; yMax = 1; }
 
-  // Auto-detect positive-only quantities (energy, height, speed magnitude, etc.)
   const isPositiveY =
     group.positiveY === true ||
     /énergie|hauteur/i.test(group.yLabel) ||
-    group.traces.some(tr =>
-      /^(Ek|Ep|Em)/.test(tr.key) ||        // Ek, Ep, Em, Ek_0, Ep_el …
-      /[_]Ek|[_]Ep|[_]Em/.test(tr.key) ||  // _Ek_0, _Ep_1 …
-      /^y_/.test(tr.key) ||                 // heights y_0, y_1, y_2
-      /^v_\d/.test(tr.key)                  // speed magnitude v_0, v_1, v_2
+    visibleTraces.some(tr =>
+      /^(Ek|Ep|Em)/.test(tr.key) ||
+      /[_]Ek|[_]Ep|[_]Em/.test(tr.key) ||
+      /^y_/.test(tr.key) ||
+      /^v_\d/.test(tr.key)
     );
 
-  // If all values are positive, clamp Y to start from 0
   if (isPositiveY && yMin < 0) yMin = 0;
 
-  // Add padding on Y (only upward for positive quantities)
   const yPad = Math.max((yMax - yMin) * 0.08, 0.01);
   if (!isPositiveY) yMin -= yPad;
   yMax += yPad;
 
-  // Compute nice axis ticks
   const xNice = niceScale(tMin, Math.max(tMax, tMin + 0.1), 6);
   const yNice = niceScale(isPositiveY ? Math.max(yMin, 0) : yMin, yMax, 5);
-  // For positive Y, force the first tick to be 0
   if (isPositiveY && yNice.min < 0) yNice.min = 0;
   if (isPositiveY && (yNice.ticks.length === 0 || yNice.ticks[0] < 0)) {
     yNice.ticks = yNice.ticks.filter(t => t >= 0);
     if (yNice.ticks.length === 0 || yNice.ticks[0] !== 0) yNice.ticks.unshift(0);
   }
 
-  // version prop forces re-render when simulation advances
   void version;
 
   if (chartData.length < 2) {
@@ -437,7 +427,7 @@ function TimeGraph({
           formatter={(v: unknown, name: unknown) => [Number(v).toFixed(4), String(name)]}
         />
         <Legend wrapperStyle={{ fontSize: 10 }} />
-        {group.traces.map((trace) => (
+        {visibleTraces.map((trace) => (
           <Line
             key={trace.key}
             type="monotone"
@@ -540,6 +530,7 @@ function GraphPanel({
   autoWindow,
   onWindowSecChange,
   onAutoWindowChange,
+  numberOfObjects,
 }: {
   history: DataPoint[];
   graphGroups: SimulationConfig['graphGroups'];
@@ -550,6 +541,7 @@ function GraphPanel({
   autoWindow: boolean;
   onWindowSecChange: (s: number) => void;
   onAutoWindowChange: (a: boolean) => void;
+  numberOfObjects: number;
 }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const group = graphGroups[activeTab];
@@ -601,7 +593,6 @@ function GraphPanel({
           </button>
         </div>
       </div>
-      {/* Window controls */}
       <div className="flex items-center gap-2 px-3 py-1 bg-white border-x border-slate-300 text-[10px]">
         <label className="flex items-center gap-1 cursor-pointer">
           <input
@@ -638,7 +629,7 @@ function GraphPanel({
       </div>
       <div ref={chartContainerRef} className="flex-1 bg-white border border-slate-300 p-2 min-h-[250px]">
         {group.type === 'time' ? (
-          <TimeGraph history={history} group={group} version={version} windowSec={windowSec} autoWindow={autoWindow} />
+          <TimeGraph history={history} group={group} version={version} windowSec={windowSec} autoWindow={autoWindow} numberOfObjects={numberOfObjects} />
         ) : (
           <PhaseGraph history={history} group={group} version={version} />
         )}
@@ -726,7 +717,6 @@ export default function SimulationView({ config }: { config: SimulationConfig })
   const [windowSec, setWindowSec] = useState(10);
   const [equilibriumReached, setEquilibriumReached] = useState(false);
 
-  // Reset engine when config changes
   useEffect(() => {
     const engine = new SimulationEngine(config);
     engineRef.current = engine;
@@ -743,7 +733,6 @@ export default function SimulationView({ config }: { config: SimulationConfig })
     setTickVersion(v => v + 1);
   }, [config]);
 
-  // Animation loop
   useEffect(() => {
     let lastTime = 0;
     let frameCount = 0;
@@ -769,7 +758,6 @@ export default function SimulationView({ config }: { config: SimulationConfig })
           engine.history = engine.history.slice(-12000);
         }
 
-        // Auto-pause when equilibrium is reached
         if (engine.config.isEquilibrium && engine.config.isEquilibrium(engine.state, engine.params, engine.time)) {
           engine.playing = false;
           setPlaying(false);
@@ -791,7 +779,6 @@ export default function SimulationView({ config }: { config: SimulationConfig })
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  // Controls
   const play = useCallback(() => {
     engineRef.current.playing = true;
     setPlaying(true);
@@ -860,14 +847,11 @@ export default function SimulationView({ config }: { config: SimulationConfig })
 
   return (
     <div className="flex h-full">
-      {/* Left Panel: Parameters */}
       <div className="w-64 flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto">
         <ParameterPanel config={config} params={params} onChange={changeParams} />
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Title */}
         <div className="px-4 py-2 bg-white border-b border-slate-200 flex items-center gap-3">
           <span className="text-2xl">{config.icon}</span>
           <div>
@@ -881,13 +865,10 @@ export default function SimulationView({ config }: { config: SimulationConfig })
           )}
         </div>
 
-        {/* Animation + Graphs */}
         <div className="flex flex-1 min-h-0">
-          {/* Animation */}
           <div className="flex-1 min-w-0 border-r border-slate-200">
             <AnimationCanvas engineRef={engineRef} />
           </div>
-          {/* Graphs */}
           <div className="w-[440px] flex-shrink-0 flex flex-col">
             <GraphPanel
               history={currentHistory}
@@ -899,11 +880,11 @@ export default function SimulationView({ config }: { config: SimulationConfig })
               autoWindow={autoWindow}
               onWindowSecChange={setWindowSec}
               onAutoWindowChange={setAutoWindow}
+              numberOfObjects={params.numberOfObjects ?? 1}
             />
           </div>
         </div>
 
-        {/* Control Bar */}
         <ControlBar
           playing={playing}
           speed={speed}
@@ -917,7 +898,6 @@ export default function SimulationView({ config }: { config: SimulationConfig })
           onSeek={seek}
         />
 
-        {/* Equations + Results */}
         <EquationsDisplay equations={config.equations} />
         <ResultsTable results={currentResults} />
       </div>
