@@ -907,16 +907,16 @@ const freeFall: SimulationConfig = {
     for (let i = 0; i < n; i++) {
       const yi = y[i * 2];
       const vyi = y[i * 2 + 1];
-      const m = p[\`m_\${i}\`];
+      const m = p[`m_${i}`];
       const h = Math.max(0, p.h0 - yi);
       const landed = yi >= p.h0 - 0.001;
 
-      d[\`y_\${i}\`] = h;
-      d[\`vy_\${i}\`] = landed ? 0 : vyi;
-      d[\`a_\${i}\`] = landed ? 0 : p.g;
-      d[\`Ek_\${i}\`] = landed ? 0 : 0.5 * m * vyi * vyi;
-      d[\`Ep_\${i}\`] = m * p.g * h;
-      d[\`Em_\${i}\`] = d[\`Ek_\${i}\`] + d[\`Ep_\${i}\`];
+      d[`y_${i}`] = h;
+      d[`vy_${i}`] = landed ? 0 : vyi;
+      d[`a_${i}`] = landed ? 0 : p.g;
+      d[`Ek_${i}`] = landed ? 0 : 0.5 * m * vyi * vyi;
+      d[`Ep_${i}`] = m * p.g * h;
+      d[`Em_${i}`] = d[`Ek_${i}`] + d[`Ep_${i}`];
     }
 
     return d;
@@ -930,7 +930,7 @@ const freeFall: SimulationConfig = {
       type: 'time',
       title: 'Hauteur y(t)',
       traces: [0, 1, 2].map(i => ({
-        key: \`y_\${i}\`,
+        key: `y_${i}`,
         label: OBJ_NAMES_FF[i],
         color: OBJ_COLORS_FF[i],
       })),
@@ -940,7 +940,7 @@ const freeFall: SimulationConfig = {
       type: 'time',
       title: 'Vitesse v(t)',
       traces: [0, 1, 2].map(i => ({
-        key: \`vy_\${i}\`,
+        key: `vy_${i}`,
         label: OBJ_NAMES_FF[i],
         color: OBJ_COLORS_FF[i],
       })),
@@ -950,7 +950,7 @@ const freeFall: SimulationConfig = {
       type: 'time',
       title: 'Accélération a(t)',
       traces: [0, 1, 2].map(i => ({
-        key: \`a_\${i}\`,
+        key: `a_${i}`,
         label: OBJ_NAMES_FF[i],
         color: OBJ_COLORS_FF[i],
       })),
@@ -960,8 +960,8 @@ const freeFall: SimulationConfig = {
       type: 'time',
       title: 'Énergie',
       traces: [0, 1, 2].flatMap(i => [
-        { key: \`Ek_\${i}\`, label: \`Ek \${i + 1}\`, color: OBJ_COLORS_FF[i] },
-        { key: \`Ep_\${i}\`, label: \`Ep \${i + 1}\`, color: OBJ_COLORS_FF[i] + '80' },
+        { key: `Ek_${i}`, label: `Ek ${i + 1}`, color: OBJ_COLORS_FF[i] },
+        { key: `Ep_${i}`, label: `Ep ${i + 1}`, color: OBJ_COLORS_FF[i] + '80' },
       ]),
       yLabel: 'Énergie (J)',
     },
@@ -1003,7 +1003,7 @@ const freeFall: SimulationConfig = {
       ctx.lineTo(w - 10, yy);
       ctx.stroke();
 
-      ctx.fillText(\`\${hh}\`, 28, yy + 3);
+      ctx.fillText(`${hh}`, 28, yy + 3);
     }
 
     // Objets
@@ -1026,7 +1026,7 @@ const freeFall: SimulationConfig = {
       ctx.stroke();
 
       // Boule
-      const radius = Math.max(12, Math.min(22, 10 + Math.log(p[\`m_\${i}\`] + 1) * 4));
+      const radius = Math.max(12, Math.min(22, 10 + Math.log(p[`m_${i}`] + 1) * 4));
 
       ctx.fillStyle = col;
       ctx.strokeStyle = '#FFFFFF';
@@ -1044,13 +1044,13 @@ const freeFall: SimulationConfig = {
       ctx.fillText(OBJ_NAMES_FF[i], objX, infoY);
 
       ctx.font = '11px sans-serif';
-      ctx.fillText(\`\${p[\`m_\${i}\`].toFixed(1)} kg\`, objX, infoY + 16);
+      ctx.fillText(`${p[`m_${i}`].toFixed(1)} kg`, objX, infoY + 16);
 
       // Hauteur à côté
       ctx.fillStyle = '#374151';
       ctx.font = '10px monospace';
       ctx.textAlign = 'left';
-      ctx.fillText(\`h=\${hi.toFixed(1)} m\`, objX + radius + 10, objY);
+      ctx.fillText(`h=${hi.toFixed(1)} m`, objX + radius + 10, objY);
 
       // Flèche vitesse
       const vScale = scale * 0.15;
@@ -1073,7 +1073,7 @@ const freeFall: SimulationConfig = {
     ctx.fillStyle = '#374151';
     ctx.font = '13px monospace';
     ctx.textAlign = 'right';
-    ctx.fillText(\`t = \${t.toFixed(2)} s\`, w - 10, 14);
+    ctx.fillText(`t = ${t.toFixed(2)} s`, w - 10, 14);
 
     ctx.textAlign = 'left';
   },
@@ -1106,11 +1106,11 @@ const freeFall: SimulationConfig = {
 
     for (let i = 0; i < n; i++) {
       const vyi = y[i * 2 + 1];
-      const m = p[\`m_\${i}\`];
+      const m = p[`m_${i}`];
 
       results.push(
-        { label: \`Vitesse \${i + 1}\`, value: vyi.toFixed(2), unit: 'm/s' },
-        { label: \`Ek \${i + 1}\`, value: (0.5 * m * vyi * vyi).toFixed(2), unit: 'J' },
+        { label: `Vitesse ${i + 1}`, value: vyi.toFixed(2), unit: 'm/s' },
+        { label: `Ek ${i + 1}`, value: (0.5 * m * vyi * vyi).toFixed(2), unit: 'J' },
       );
     }
 
