@@ -895,7 +895,7 @@ const freeFall: SimulationConfig = {
     }
     // Galileo banner
     ctx.fillStyle = '#6366F1'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('Expérience de Galilée — sans frottement', w / 2, topY - 30);
+    ctx.fillText('  ', w / 2, topY - 30);
     // objects — all at same height since no friction
     for (let i = 0; i < 3; i++) {
       const yi = y[i * 2];
@@ -910,7 +910,7 @@ const freeFall: SimulationConfig = {
       const ms = Math.max(10, Math.min(20, 8 + Math.log(p[`m_${i}`] + 1) * 5));
       ctx.beginPath(); ctx.arc(objX, objY, ms, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
       ctx.fillStyle = col; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(`${OBJ_NAMES_FF[i]} (${p[`m_${i}`]} kg)`, objX, topY - 2);
+      ctx.fillText(`${OBJ_NAMES_FF[i]} (${p[`m_${i}`]} kg)`, objX, topY - 10);
       const vScale = scale * 0.15;
       const vLen = vyi * vScale;
       if (Math.abs(vLen) > 3) {
