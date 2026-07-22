@@ -19,7 +19,7 @@ export default function App() {
         <div className="p-4 border-b border-slate-700/50">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-lg font-bold">
-              ⚛
+              
             </div>
             <div>
               <h1 className="text-base font-bold tracking-tight">PhysiSim</h1>
