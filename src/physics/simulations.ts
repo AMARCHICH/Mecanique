@@ -879,7 +879,7 @@ const freeFall: SimulationConfig = {
   ],
   renderAnimation: (ctx, y, p, t, w, h, _hist) => {
     drawBackground(ctx, w, h);
-    const groundY = h * 0.85;
+    const groundY = h * 0.60;
     const topY = h * 0.08;
     const scale = (groundY - topY) / Math.max(p.h0, 1);
     const spacing = (w - 40) / 3;
