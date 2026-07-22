@@ -1242,7 +1242,7 @@ const fluidFall: SimulationConfig = {
     }
     // title
     ctx.fillStyle = '#0EA5E9'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(`Chute dans un fluide (ρ = ${p.rho.toFixed(2)} kg/m³)`, w / 2, titleY);
+    ctx.fillText(` `, w / 2, titleY);
     // objects
     for (let i = 0; i < n; i++) {
       const yi = y[i * 2];
