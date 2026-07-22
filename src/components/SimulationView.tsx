@@ -846,30 +846,30 @@ export default function SimulationView({ config }: { config: SimulationConfig })
   const maxTime = currentHistory.length > 0 ? currentHistory[currentHistory.length - 1].t : 0;
 
   return (
-    <div className="flex h-full">
-      <div className="w-64 flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto">
+    <div className="flex flex-col md:flex-row h-full md:overflow-hidden">
+      <div className="w-full md:w-64 flex-shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-200 overflow-y-auto max-h-[50vh] md:max-h-none">
         <ParameterPanel config={config} params={params} onChange={changeParams} />
       </div>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="px-4 py-2 bg-white border-b border-slate-200 flex items-center gap-3">
+        <div className="px-4 py-2 bg-white border-b border-slate-200 flex flex-wrap items-center gap-3">
           <span className="text-2xl">{config.icon}</span>
           <div>
             <h2 className="text-lg font-bold text-slate-800">{config.name}</h2>
             <p className="text-xs text-slate-500">{config.description}</p>
           </div>
           {equilibriumReached && (
-            <span className="ml-auto px-3 py-1 bg-green-100 text-green-700 border border-green-300 rounded-full text-xs font-medium">
+            <span className="md:ml-auto px-3 py-1 bg-green-100 text-green-700 border border-green-300 rounded-full text-xs font-medium">
               ✓ Équilibre atteint — courbes conservées
             </span>
           )}
         </div>
 
-        <div className="flex flex-1 min-h-0">
-          <div className="flex-1 min-w-0 border-r border-slate-200">
+        <div className="flex flex-col md:flex-row flex-1 md:min-h-0">
+          <div className="w-full h-[300px] md:h-auto md:flex-1 md:min-w-0 border-b md:border-b-0 md:border-r border-slate-200">
             <AnimationCanvas engineRef={engineRef} />
           </div>
-          <div className="w-[440px] flex-shrink-0 flex flex-col">
+          <div className="w-full h-[400px] md:h-auto md:w-[440px] flex-shrink-0 flex flex-col">
             <GraphPanel
               history={currentHistory}
               graphGroups={config.graphGroups}
