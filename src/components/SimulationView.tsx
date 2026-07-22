@@ -159,10 +159,51 @@ function ParameterPanel({
   params: Record<string, number>;
   onChange: (p: Record<string, number>) => void;
 }) {
+  const maxObjects = config.maxObjectCount ?? 1;
+  const numberOfObjects = Math.round(params.numberOfObjects ?? config.defaultObjectCount ?? 1);
+
   return (
     <div className="p-3 space-y-3 overflow-y-auto text-sm" style={{ maxHeight: 'calc(100vh - 120px)' }}>
       <h3 className="font-bold text-slate-700 text-base border-b border-slate-200 pb-2">⚙️ Paramètres</h3>
+
+      {maxObjects > 1 && (
+        <div className="pb-3 border-b border-slate-200 flex items-center justify-between">
+          <span className="text-slate-700 text-xs font-medium">
+            Objets ({numberOfObjects}/{maxObjects})
+          </span>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              disabled={numberOfObjects <= 1}
+              onClick={() => onChange({ ...params, numberOfObjects: numberOfObjects - 1 })}
+              className="w-6 h-6 flex items-center justify-center rounded bg-slate-200 text-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-300"
+              title="Retirer un objet"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              disabled={numberOfObjects >= maxObjects}
+              onClick={() => onChange({ ...params, numberOfObjects: numberOfObjects + 1 })}
+              className="px-2 h-6 flex items-center justify-center rounded bg-blue-600 text-white text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700"
+              title="Ajouter un objet"
+            >
+              + Ajouter un objet
+            </button>
+          </div>
+        </div>
+      )}
+
       {config.parameters.map((param) => {
+        // Masque les paramètres des objets pas encore ajoutés (ex: masse Objet 2/3
+        // tant que numberOfObjects ne les inclut pas)
+        if (maxObjects > 1) {
+          const objMatch = param.key.match(/_(\d+)$/);
+          if (objMatch && parseInt(objMatch[1], 10) >= numberOfObjects) {
+            return null;
+          }
+        }
+
         if (param.type === 'checkbox') {
           return (
             <label key={param.key} className="flex items-center gap-2 cursor-pointer py-1">
@@ -675,7 +716,10 @@ export default function SimulationView({ config }: { config: SimulationConfig })
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [params, setParams] = useState<Record<string, number>>(
-    () => Object.fromEntries(config.parameters.map(p => [p.key, p.default]))
+    () => ({
+      ...Object.fromEntries(config.parameters.map(p => [p.key, p.default])),
+      numberOfObjects: config.defaultObjectCount ?? 1,
+    })
   );
   const [activeGraphTab, setActiveGraphTab] = useState(0);
   const [autoWindow, setAutoWindow] = useState(false);
@@ -686,7 +730,10 @@ export default function SimulationView({ config }: { config: SimulationConfig })
   useEffect(() => {
     const engine = new SimulationEngine(config);
     engineRef.current = engine;
-    setParams(Object.fromEntries(config.parameters.map(p => [p.key, p.default])));
+    setParams({
+      ...Object.fromEntries(config.parameters.map(p => [p.key, p.default])),
+      numberOfObjects: config.defaultObjectCount ?? 1,
+    });
     setPlaying(false);
     setSpeed(1);
     setActiveGraphTab(0);
@@ -769,7 +816,12 @@ export default function SimulationView({ config }: { config: SimulationConfig })
     const engine = engineRef.current;
     engine.playing = false;
     engine.resetToDefaults();
-    setParams(Object.fromEntries(engine.config.parameters.map(p => [p.key, p.default])));
+    const defaultParams = {
+      ...Object.fromEntries(engine.config.parameters.map(p => [p.key, p.default])),
+      numberOfObjects: engine.config.defaultObjectCount ?? 1,
+    };
+    engine.params = { ...defaultParams };
+    setParams(defaultParams);
     setPlaying(false);
     setEquilibriumReached(false);
     setTickVersion(v => v + 1);
