@@ -55,6 +55,10 @@ export interface SimulationConfig {
   description: string;
   category: string;
   parameters: ParameterDef[];
+  /** Nombre d'objets affichés/actifs au démarrage (par défaut 1 si non défini) */
+  defaultObjectCount?: number;
+  /** Nombre maximum d'objets que l'élève peut ajouter (si non défini, pas de contrôle affiché) */
+  maxObjectCount?: number;
   stateLabels: string[];
   getInitialState: (params: Record<string, number>) => number[];
   derivatives: (t: number, y: number[], params: Record<string, number>) => number[];
@@ -117,7 +121,10 @@ export class SimulationEngine {
 
   constructor(config: SimulationConfig) {
     this.config = config;
-    this.params = Object.fromEntries(config.parameters.map(p => [p.key, p.default]));
+    this.params = {
+      ...Object.fromEntries(config.parameters.map(p => [p.key, p.default])),
+      numberOfObjects: config.defaultObjectCount ?? 1,
+    };
     this.state = config.getInitialState(this.params);
     this.time = 0;
     this.history = [];
@@ -145,7 +152,10 @@ export class SimulationEngine {
   }
 
   resetToDefaults(): void {
-    this.params = Object.fromEntries(this.config.parameters.map(p => [p.key, p.default]));
+    this.params = {
+      ...Object.fromEntries(this.config.parameters.map(p => [p.key, p.default])),
+      numberOfObjects: this.config.defaultObjectCount ?? 1,
+    };
     this.state = this.config.getInitialState(this.params);
     this.time = 0;
     this.history = [];
