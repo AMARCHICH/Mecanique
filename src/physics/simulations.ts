@@ -1130,6 +1130,8 @@ const fluidFall: SimulationConfig = {
   icon: '💧',
   description: 'Chute libre avec frottements fluides — comparaison de plusieurs objets dans un fluide visqueux',
   category: 'Chute et projectile',
+  defaultObjectCount: 1,
+  maxObjectCount: 3,
   parameters: [
     { key: 'g', label: 'Gravité g', unit: 'm/s²', min: 0.1, max: 25, step: 0.1, default: 9.81 },
     { key: 'h0', label: 'Hauteur initiale h₀', unit: 'm', min: 1, max: 500, step: 1, default: 100 },
@@ -1151,7 +1153,9 @@ const fluidFall: SimulationConfig = {
   getInitialState: () => [0, 0, 0, 0, 0, 0],
   derivatives: (_t, y, p) => {
     const dydt: number[] = [];
+    const n = p.numberOfObjects ?? 1;
     for (let i = 0; i < 3; i++) {
+      if (i >= n) { dydt.push(0, 0); continue; }
       const yi = y[i * 2];
       const vyi = y[i * 2 + 1];
       if (yi >= p.h0) { dydt.push(0, 0); continue; }
@@ -1165,18 +1169,21 @@ const fluidFall: SimulationConfig = {
     return dydt;
   },
   postStep: (y, p) => {
-    for (let i = 0; i < 3; i++) {
+    const n = p.numberOfObjects ?? 1;
+    for (let i = 0; i < n; i++) {
       if (y[i * 2] > p.h0) { y[i * 2] = p.h0; y[i * 2 + 1] = 0; }
     }
   },
   isEquilibrium: (y, p, t) => {
     if (t < 0.5) return false;
-    for (let i = 0; i < 3; i++) { if (y[i * 2] < p.h0 - 0.01) return false; }
+    const n = p.numberOfObjects ?? 1;
+    for (let i = 0; i < n; i++) { if (y[i * 2] < p.h0 - 0.01) return false; }
     return true;
   },
   computeDerivedQuantities: (_t, y, p) => {
     const d: Record<string, number> = {};
-    for (let i = 0; i < 3; i++) {
+    const n = p.numberOfObjects ?? 1;
+    for (let i = 0; i < n; i++) {
       const yi = y[i * 2];
       const vyi = y[i * 2 + 1];
       const m = p[`m_${i}`];
@@ -1209,10 +1216,11 @@ const fluidFall: SimulationConfig = {
   ],
   renderAnimation: (ctx, y, p, t, w, h, _hist) => {
     drawBackground(ctx, w, h);
+    const n = p.numberOfObjects ?? 1;
     const groundY = h * 0.85;
     const topY = h * 0.08;
     const scale = (groundY - topY) / Math.max(p.h0, 1);
-    const spacing = (w - 40) / 3;
+    const spacing = (w - 40) / Math.max(n, 1);
     drawGround(ctx, groundY, w);
     // fluid visualization (light blue overlay)
     ctx.fillStyle = 'rgba(147, 197, 253, 0.08)';
@@ -1230,7 +1238,7 @@ const fluidFall: SimulationConfig = {
     ctx.fillStyle = '#0EA5E9'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(`Chute dans un fluide (ρ = ${p.rho.toFixed(2)} kg/m³)`, w / 2, topY - 12);
     // objects
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < n; i++) {
       const yi = y[i * 2];
       const vyi = y[i * 2 + 1];
       const hi = Math.max(0, p.h0 - yi);
@@ -1279,7 +1287,8 @@ const fluidFall: SimulationConfig = {
   ],
   computeResults: (p, y) => {
     const results: { label: string; value: string; unit: string }[] = [];
-    for (let i = 0; i < 3; i++) {
+    const n = p.numberOfObjects ?? 1;
+    for (let i = 0; i < n; i++) {
       const vyi = y[i * 2 + 1];
       const m = p[`m_${i}`];
       const A = p[`A_${i}`];
@@ -1307,6 +1316,8 @@ const projectile: SimulationConfig = {
   icon: '🎯',
   description: 'Trajectoire de plusieurs projectiles — avec ou sans résistance de l\'air',
   category: 'Chute et projectile',
+  defaultObjectCount: 1,
+  maxObjectCount: 3,
   parameters: [
     { key: 'g', label: 'Gravité g', unit: 'm/s²', min: 0.1, max: 25, step: 0.1, default: 9.81 },
     { key: 'air_res', label: 'Résistance de l\'air', unit: '', min: 0, max: 1, step: 1, default: 0, type: 'checkbox' },
@@ -1333,7 +1344,9 @@ const projectile: SimulationConfig = {
   stateLabels: ['x₀', 'y₀', 'vx₀', 'vy₀', 'x₁', 'y₁', 'vx₁', 'vy₁', 'x₂', 'y₂', 'vx₂', 'vy₂'],
   getInitialState: (p) => {
     const s: number[] = [];
+    const n = p.numberOfObjects ?? 1;
     for (let i = 0; i < 3; i++) {
+      if (i >= n) { s.push(0, 0, 0, 0); continue; }
       const a = (p[`alpha_${i}`] || 45) * Math.PI / 180;
       const v0 = p[`v0_${i}`] || 30;
       s.push(0, 0, v0 * Math.cos(a), v0 * Math.sin(a));
@@ -1342,7 +1355,9 @@ const projectile: SimulationConfig = {
   },
   derivatives: (_t, y, p) => {
     const dydt: number[] = [];
+    const n = p.numberOfObjects ?? 1;
     for (let i = 0; i < 3; i++) {
+      if (i >= n) { dydt.push(0, 0, 0, 0); continue; }
       const yi = y[i * 4 + 1];
       const vxi = y[i * 4 + 2], vyi = y[i * 4 + 3];
       // Ground collision: below ground and not going up → stopped
@@ -1366,8 +1381,9 @@ const projectile: SimulationConfig = {
     }
     return dydt;
   },
-  postStep: (y, _p) => {
-    for (let i = 0; i < 3; i++) {
+  postStep: (y, p) => {
+    const n = p.numberOfObjects ?? 1;
+    for (let i = 0; i < n; i++) {
       if (y[i * 4 + 1] < 0) {
         y[i * 4 + 1] = 0;
         y[i * 4 + 2] = 0;
@@ -1375,16 +1391,18 @@ const projectile: SimulationConfig = {
       }
     }
   },
-  isEquilibrium: (y, _p, t) => {
+  isEquilibrium: (y, p, t) => {
     if (t < 0.5) return false; // don't trigger at launch when yi=0
-    for (let i = 0; i < 3; i++) {
+    const n = p.numberOfObjects ?? 1;
+    for (let i = 0; i < n; i++) {
       if (y[i * 4 + 1] > 0.01) return false;
     }
     return true;
   },
   computeDerivedQuantities: (_t, y, p) => {
     const d: Record<string, number> = {};
-    for (let i = 0; i < 3; i++) {
+    const n = p.numberOfObjects ?? 1;
+    for (let i = 0; i < n; i++) {
       const xi = y[i * 4], yi = y[i * 4 + 1], vxi = y[i * 4 + 2], vyi = y[i * 4 + 3];
       const landed = yi <= 0.001;
       const v = landed ? 0 : Math.sqrt(vxi * vxi + vyi * vyi);
@@ -1412,15 +1430,16 @@ const projectile: SimulationConfig = {
   ],
   renderAnimation: (ctx, y, p, t, w, h, hist) => {
     drawBackground(ctx, w, h);
+    const n = p.numberOfObjects ?? 1;
     // Find bounds from history
     let maxX = 1, maxY = 1;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < n; i++) {
       const xi = y[i * 4], yi = y[i * 4 + 1];
       maxX = Math.max(maxX, xi + 10);
       maxY = Math.max(maxY, yi + 10);
     }
     // Also check analytical range for scaling
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < n; i++) {
       const v0 = p[`v0_${i}`] || 30;
       const a = (p[`alpha_${i}`] || 45) * Math.PI / 180;
       maxX = Math.max(maxX, v0 * v0 * Math.sin(2 * a) / p.g + 10);
@@ -1457,7 +1476,7 @@ const projectile: SimulationConfig = {
     // trajectories from history
     if (hist.length > 2) {
       const step = Math.max(1, Math.floor(hist.length / 500));
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < n; i++) {
         ctx.strokeStyle = OBJ_COLORS_PJ[i]; ctx.lineWidth = 2;
         ctx.beginPath();
         let started = false;
@@ -1472,7 +1491,7 @@ const projectile: SimulationConfig = {
       }
     }
     // current positions
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < n; i++) {
       const xi = y[i * 4], yi = y[i * 4 + 1], vxi = y[i * 4 + 2], vyi = y[i * 4 + 3];
       if (yi < -1) continue;
       const px = originX + xi * scale;
@@ -1509,7 +1528,8 @@ const projectile: SimulationConfig = {
   ],
   computeResults: (p, y) => {
     const results: { label: string; value: string; unit: string }[] = [];
-    for (let i = 0; i < 3; i++) {
+    const n = p.numberOfObjects ?? 1;
+    for (let i = 0; i < n; i++) {
       const v0 = p[`v0_${i}`] || 30;
       const a = (p[`alpha_${i}`] || 45) * Math.PI / 180;
       const range = v0 * v0 * Math.sin(2 * a) / p.g;
