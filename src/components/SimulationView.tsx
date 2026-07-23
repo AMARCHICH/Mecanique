@@ -236,24 +236,20 @@ function ControlBar({
   playing,
   speed,
   time,
-  maxTime,
   onPlay,
   onPause,
   onStop,
   onReset,
   onSpeedChange,
-  onSeek,
 }: {
   playing: boolean;
   speed: number;
   time: number;
-  maxTime: number;
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;
   onReset: () => void;
   onSpeedChange: (s: number) => void;
-  onSeek: (t: number) => void;
 }) {
   const speeds = [0.25, 0.5, 1, 2, 4];
   return (
@@ -291,18 +287,7 @@ function ControlBar({
         ))}
       </div>
       <div className="h-6 w-px bg-slate-300 mx-1" />
-      <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-        <span className="text-xs font-mono text-slate-600 w-20">{time.toFixed(2)} s</span>
-        <input
-          type="range"
-          min={0}
-          max={Math.max(maxTime, 0.01)}
-          step={0.01}
-          value={time}
-          onChange={(e) => onSeek(parseFloat(e.target.value))}
-          className="flex-1 h-1.5 accent-blue-600 cursor-pointer"
-        />
-      </div>
+      <span className="text-xs font-mono text-slate-600">{time.toFixed(2)} s</span>
     </div>
   );
 }
@@ -819,14 +804,6 @@ export default function SimulationView({ config }: { config: SimulationConfig })
     setSpeed(s);
   }, []);
 
-  const seek = useCallback((targetTime: number) => {
-    const engine = engineRef.current;
-    engine.playing = false;
-    engine.seekTo(targetTime);
-    setPlaying(false);
-    setTickVersion(v => v + 1);
-  }, []);
-
   const changeParams = useCallback((newParams: Record<string, number>) => {
     setParams(newParams);
     const engine = engineRef.current;
@@ -843,7 +820,6 @@ export default function SimulationView({ config }: { config: SimulationConfig })
   const currentTime = engine.time;
   const currentHistory = engine.history;
   const currentResults = engine.config.computeResults(engine.params, engine.state, engine.time);
-  const maxTime = currentHistory.length > 0 ? currentHistory[currentHistory.length - 1].t : 0;
 
   return (
     <div className="flex flex-col md:flex-row h-full md:overflow-hidden">
@@ -889,13 +865,11 @@ export default function SimulationView({ config }: { config: SimulationConfig })
           playing={playing}
           speed={speed}
           time={currentTime}
-          maxTime={maxTime}
           onPlay={play}
           onPause={pause}
           onStop={stop}
           onReset={reset}
           onSpeedChange={changeSpeed}
-          onSeek={seek}
         />
 
         <EquationsDisplay equations={config.equations} />
