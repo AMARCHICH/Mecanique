@@ -236,7 +236,7 @@ function ControlBar({
   playing,
   speed,
   time,
-  maxTime,
+  ,
   onPlay,
   onPause,
   onStop,
@@ -889,13 +889,13 @@ export default function SimulationView({ config }: { config: SimulationConfig })
           playing={playing}
           speed={speed}
           time={currentTime}
-          maxTime={maxTime}
+          //maxTime={maxTime}
           onPlay={play}
           onPause={pause}
           onStop={stop}
           onReset={reset}
           onSpeedChange={changeSpeed}
-          onSeek={seek}
+          //onSeek={seek}
         />
 
         <EquationsDisplay equations={config.equations} />
